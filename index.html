@@ -1,0 +1,326 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Internship Finder</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      margin: 0;
+      padding: 25px;
+    }
+
+    h1 { color: #1d4ed8; }
+
+    input, button {
+      padding: 11px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background: #1d4ed8;
+      color: white;
+      cursor: pointer;
+    }
+
+    section, .job {
+      background: white;
+      padding: 15px;
+      margin: 12px 0;
+      border-radius: 8px;
+    }
+
+    .job h3 { color: #1d4ed8; }
+
+    a {
+      display: inline-block;
+      background: #15803d;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 5px;
+      text-decoration: none;
+    }
+
+    .message { color: #166534; }
+  </style>
+</head>
+
+<body>
+  <h1>Internship Finder</h1>
+
+  <section>
+    <h2>Student Registration</h2>
+    <form id="registerForm">
+      <input id="name" placeholder="Full name" required>
+      <input id="email" type="email" placeholder="Email" required>
+      <input id="password" type="password"
+             placeholder="Password (min 6 characters)"
+             minlength="6" required>
+      <button type="submit">Register</button>
+    </form>
+    <p id="registerMessage" class="message"></p>
+  </section>
+
+  <section>
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input id="loginEmail" type="email" placeholder="Email" required>
+      <input id="loginPassword" type="password"
+             placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+    <p id="loginMessage" class="message"></p>
+    <p id="studentMessage"></p>
+    <button type="button" onclick="logout()">Logout</button>
+  </section>
+
+  <section>
+    <h2>Find Internships</h2>
+    <input id="search" placeholder="Internship or company">
+    <input id="location" placeholder="Location (e.g. Chennai)">
+    <input id="field" placeholder="Field (e.g. Python)">
+    <button type="button" onclick="loadJobs()">Search</button>
+    <div id="jobs">Click Search to find internships.</div>
+  </section>
+
+  <section>
+    <h2>My Applications</h2>
+    <div id="applications">Login to view your applications.</div>
+  </section>
+
+  <script>
+    const getUsers = () =>
+      JSON.parse(localStorage.getItem("internshipUsers") || "[]");
+
+    const getApplications = () =>
+      JSON.parse(localStorage.getItem("myApplications") || "[]");
+
+    function getStudent() {
+      return JSON.parse(localStorage.getItem("currentStudent") || "null");
+    }
+
+    document.getElementById("registerForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value;
+      const users = getUsers();
+
+      if (users.some(user => user.email === email)) {
+        document.getElementById("registerMessage").textContent =
+          "Email already registered. Please login.";
+        return;
+      }
+
+      users.push({ name, email, password });
+      localStorage.setItem("internshipUsers", JSON.stringify(users));
+      localStorage.setItem("currentStudent", JSON.stringify({ name, email }));
+
+      document.getElementById("registerMessage").textContent =
+        "Welcome, " + name + "! Registration successful.";
+
+      this.reset();
+      updateStudent();
+      showApplications();
+    });
+
+    document.getElementById("loginForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+      const password = document.getElementById("loginPassword").value;
+      const user = getUsers().find(
+        u => u.email === email && u.password === password
+      );
+
+      if (!user) {
+        document.getElementById("loginMessage").textContent =
+          "Incorrect email or password.";
+        return;
+      }
+
+      localStorage.setItem(
+        "currentStudent",
+        JSON.stringify({ name: user.name, email: user.email })
+      );
+
+      document.getElementById("loginMessage").textContent =
+        "Welcome back, " + user.name + "!";
+
+      this.reset();
+      updateStudent();
+      showApplications();
+    });
+
+    function updateStudent() {
+      const student = getStudent();
+      document.getElementById("studentMessage").textContent =
+        student ? "Logged in as: " + student.name : "Not logged in.";
+    }
+
+    function logout() {
+      localStorage.removeItem("currentStudent");
+      document.getElementById("loginMessage").textContent = "Logged out.";
+      updateStudent();
+      showApplications();
+    }
+
+    function showApplications() {
+      const student = getStudent();
+      const container = document.getElementById("applications");
+
+      if (!student) {
+        container.textContent = "Please login to view your applications.";
+        return;
+      }
+
+      const mine = getApplications().filter(
+        app => app.email === student.email
+      );
+
+      if (mine.length === 0) {
+        container.textContent = "No applications yet.";
+        return;
+      }
+
+      container.innerHTML = "";
+
+      mine.forEach(app => {
+        const card = document.createElement("div");
+        card.className = "job";
+
+        const title = document.createElement("h3");
+        title.textContent = app.title;
+
+        const company = document.createElement("p");
+        company.textContent = "Company: " + app.company;
+
+        const location = document.createElement("p");
+        location.textContent = "Location: " + app.location;
+
+        const status = document.createElement("p");
+        status.textContent = "Status: " + app.status;
+
+        card.append(title, company, location, status);
+        container.appendChild(card);
+      });
+    }
+
+    async function loadJobs() {
+      const jobsDiv = document.getElementById("jobs");
+
+      const search =
+        document.getElementById("search").value.trim() ||
+        document.getElementById("field").value.trim() ||
+        "software";
+
+      const location =
+        document.getElementById("location").value.trim() || "India";
+
+      jobsDiv.textContent = "Loading internships...";
+
+      try {
+        const url =
+          "/api/internships?search=" + encodeURIComponent(search) +
+          "&location=" + encodeURIComponent(location);
+
+        const response = await fetch(url);
+        const jobs = await response.json();
+
+        if (!response.ok) {
+          throw new Error(jobs.error || "Unable to load internships.");
+        }
+
+        if (!Array.isArray(jobs) || jobs.length === 0) {
+          jobsDiv.textContent = "No internships found. Try another search.";
+          return;
+        }
+
+        jobsDiv.innerHTML = "";
+
+        jobs.forEach(job => {
+          const card = document.createElement("div");
+          card.className = "job";
+
+          const title = document.createElement("h3");
+          title.textContent = job.title;
+
+          const company = document.createElement("p");
+          company.textContent = "Company: " + job.company;
+
+          const place = document.createElement("p");
+          place.textContent = "Location: " + job.location;
+
+          const skills = document.createElement("p");
+          skills.textContent = "Skills: " + (job.skills || "Not specified");
+
+          const applyButton = document.createElement("button");
+          applyButton.type = "button";
+          applyButton.textContent = "Apply Now";
+          applyButton.addEventListener("click", () => applyForJob(job));
+
+          card.append(title, company, place, skills);
+
+          if (job.applyUrl) {
+            const link = document.createElement("a");
+            link.href = job.applyUrl;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = "Open Application Website";
+            card.appendChild(link);
+          }
+
+          card.appendChild(applyButton);
+          jobsDiv.appendChild(card);
+        });
+      } catch (error) {
+        jobsDiv.textContent = "Error loading internships: " + error.message;
+      }
+    }
+
+    function applyForJob(job) {
+      const student = getStudent();
+
+      if (!student) {
+        alert("Please register or login before applying.");
+        return;
+      }
+
+      const applications = getApplications();
+
+      const alreadyApplied = applications.some(app =>
+        app.email === student.email && app.applyUrl === job.applyUrl
+      );
+
+      if (alreadyApplied) {
+        alert("You have already saved this application.");
+        return;
+      }
+
+      applications.push({
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        applyUrl: job.applyUrl,
+        email: student.email,
+        status: "Applied"
+      });
+
+      localStorage.setItem("myApplications", JSON.stringify(applications));
+      showApplications();
+
+      alert("Application saved! Click Open Application Website to apply on the employer's website.");
+    }
+
+    updateStudent();
+    showApplications();
+  </script>
+</body>
+</html>
